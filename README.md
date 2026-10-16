@@ -123,7 +123,7 @@ pytest -q
 alembic upgrade head
 ```
 
-Run these checks in your own environment before relying on a change; I have not independently verified the live Docker and Celery setup in this session.
+Run these commands after changing the code. GitHub Actions runs the lint checks, migration, and tests on pushes and pull requests.
 
 ## Reliability notes
 
