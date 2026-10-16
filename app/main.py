@@ -1,7 +1,7 @@
 """Create the FastAPI application and expose basic health checks.
 
-This module is intentionally small: request handling lives in api.py, while
-database models, authentication, and background work each have their own module.
+HTTP endpoints live in api.py. Keeping startup and health checks here makes
+the entry point easier to find when you first open the project.
 """
 from fastapi import FastAPI
 from sqlalchemy import text
@@ -17,13 +17,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Keep the API routes in one place instead of defining every endpoint here.
+# Register the endpoints defined in api.py under this application.
 app.include_router(router)
 
 
 @app.get("/", tags=["meta"])
 def root() -> dict[str, str]:
-    """Give a small welcome response and point people to the useful URLs."""
+    """Return a small welcome response with links to useful URLs."""
     return {
         "name": settings.app_name,
         "docs": "/docs",
@@ -33,25 +33,25 @@ def root() -> dict[str, str]:
 
 @app.get("/health/live", tags=["health"])
 def live() -> dict[str, str]:
-    """Check that the web process can respond; this does not check dependencies."""
+    """Check that the web process responds, without checking its dependencies."""
     return {"status": "ok"}
 
 
 @app.get("/health/ready", tags=["health"])
 def ready() -> dict[str, object]:
-    """Check whether the API can currently reach PostgreSQL and Redis."""
+    """Check whether the API can reach PostgreSQL and the Redis broker."""
     dependencies: dict[str, str] = {}
 
-    # SELECT 1 is a lightweight way to confirm that a database connection works.
+    # SELECT 1 is a cheap query used only to confirm a database connection works.
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
         dependencies["database"] = "ok"
     except Exception:
-        # Keep internal exception details out of a public health endpoint.
+        # Health checks return a simple status rather than internal error details.
         dependencies["database"] = "unavailable"
 
-    # Celery uses Redis as its message broker, so the API checks broker access too.
+    # Celery uses Redis to pass jobs from the API to the separate worker process.
     try:
         with celery_app.connection_for_read() as connection:
             connection.ensure_connection(max_retries=0)
@@ -59,6 +59,7 @@ def ready() -> dict[str, object]:
     except Exception:
         dependencies["redis"] = "unavailable"
 
+    # The API is ready only when both dependencies respond.
     is_ready = all(value == "ok" for value in dependencies.values())
     return {
         "status": "ok" if is_ready else "degraded",
