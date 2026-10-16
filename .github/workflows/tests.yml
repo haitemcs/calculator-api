@@ -1,16 +1,24 @@
 name: tests
+
+# Run the checks whenever code is pushed to main/a feature branch or a PR targets main.
 on:
   push:
     branches: [main, "feature/**"]
   pull_request:
     branches: [main]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # GitHub starts temporary PostgreSQL and Redis services for this job.
     services:
       postgres:
         image: postgres:16
-        env: {POSTGRES_DB: async_tasks, POSTGRES_USER: app, POSTGRES_PASSWORD: app_password}
+        env:
+          POSTGRES_DB: async_tasks
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_password
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U app -d async_tasks"
@@ -21,11 +29,14 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 10
+
+    # These values point the app to the temporary services above.
     env:
       DATABASE_URL: postgresql+psycopg://app:app_password@localhost:5432/async_tasks
       SECRET_KEY: ci-test-secret-change-this-value
       CELERY_BROKER_URL: redis://localhost:6379/1
       CELERY_RESULT_BACKEND: redis://localhost:6379/2
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,6 +44,7 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      # Stop the workflow if linting, migrations, or tests fail.
       - run: ruff check --select F app tests migrations
       - run: alembic upgrade head
       - run: pytest --cov=app --cov-report=term-missing
