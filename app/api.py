@@ -1,4 +1,5 @@
 from fastapi import APIRouter,Depends,HTTPException,Query,Response,status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func,select
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -13,9 +14,9 @@ def register(data:UserCreate,db:Session=Depends(get_db)):
     if db.scalar(select(User).where(User.email==email)):raise HTTPException(409,"Account already exists")
     user=User(email=email,hashed_password=hash_password(data.password));db.add(user);db.commit();db.refresh(user);return user
 @router.post("/auth/token",response_model=Token)
-def login(data:UserCreate,db:Session=Depends(get_db)):
-    user=db.scalar(select(User).where(User.email==data.email.lower()))
-    if not user or not verify_password(data.password,user.hashed_password) or not user.is_active:raise HTTPException(401,"Incorrect email or password",headers={"WWW-Authenticate":"Bearer"})
+def login(form:OAuth2PasswordRequestForm=Depends(),db:Session=Depends(get_db)):
+    user=db.scalar(select(User).where(User.email==form.username.lower()))
+    if not user or not verify_password(form.password,user.hashed_password) or not user.is_active:raise HTTPException(401,"Incorrect email or password",headers={"WWW-Authenticate":"Bearer"})
     return Token(access_token=create_access_token(user.id))
 @router.get("/auth/me",response_model=UserRead)
 def me(user:User=Depends(get_current_user)):return user

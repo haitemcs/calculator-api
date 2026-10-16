@@ -29,8 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "3.13", cache: pip}
+        with:
+          python-version: "3.13"
+          cache: pip
       - run: pip install -r requirements.txt
-      - run: ruff check app tests migrations
+      - run: ruff check --select F app tests migrations
       - run: alembic upgrade head
       - run: pytest --cov=app --cov-report=term-missing

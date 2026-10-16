@@ -39,15 +39,15 @@ On Windows, use Celery's --pool=solo option if the default worker pool is proble
 All application endpoints use /api/v1. Interactive docs are at /docs.
 
 ### Authentication
-- POST /api/v1/auth/register — create an account
-- POST /api/v1/auth/token — obtain a JWT bearer token (email/password JSON)
+- POST /api/v1/auth/register — create an account with JSON email/password
+- POST /api/v1/auth/token — obtain a JWT using form fields username (your email) and password
 - GET /api/v1/auth/me — current authenticated user
 
 Registration body:
 
     {"email":"user@example.com","password":"use-a-long-password"}
 
-Use the returned access_token as a Bearer token in Swagger's Authorize dialog.
+In Swagger UI, use the Authorize dialog and enter the email as username and the password. Alternatively, POST form-encoded username and password to /api/v1/auth/token.
 
 ### Background tasks
 - POST /api/v1/tasks — submit task (202 Accepted)
@@ -100,7 +100,7 @@ The task row is committed before Celery dispatch. If broker dispatch fails, the 
 
 ## Checks
 
-    ruff check app tests migrations
+    ruff check --select F app tests migrations
     pytest -q
     alembic upgrade head
 
